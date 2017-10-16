@@ -1,14 +1,21 @@
+'''
+Created on 5 Oct 2017
 
+@author: Simon Meaden
+'''
 import abc
 from pluginbase import PluginBase
 
+class RWData:
+    name = ''
+    data = []
 
 class ConvertInterface(abc.ABC, PluginBase):
     
     m_pluginname = 'Base plugin'
     m_plugindescription = 'Basic plugin does nothing'
     m_filetypes = []
-    m_rwdata = []
+    m_rwdata = {}
 
     
     def __init__(self):
@@ -16,6 +23,11 @@ class ConvertInterface(abc.ABC, PluginBase):
         init
         """
         
+    '''
+    convert is an abstract method which you need to implement in your plugin.
+    it takes as a parameter a list of filenames and returns a dictionary
+    of route names against lists of rows of strings.
+    '''
     @abc.abstractmethod
     def convert(self, filenames):
         """

@@ -5,6 +5,9 @@ Created on 5 Oct 2017
 '''
 import abc
 from convert_iplugin import ConvertInterface
+from chomp import chomp
+
+
 
 class HermesUKPlugin(ConvertInterface):
     '''
@@ -23,6 +26,7 @@ class HermesUKPlugin(ConvertInterface):
        
     def parse_file(self,  fo):
         lines = fo.readlines()
+        data = []
         for line in lines:
             blocks = line.split(",")
             route = blocks[8][3:6]
@@ -36,8 +40,6 @@ class HermesUKPlugin(ConvertInterface):
             postcode = blocks[5]
             country = 'GB'
             priority = '1.0'
-            if route not in self.routes:
-                self.routes.append(route)
             # Uninitialised hermes deliveries are defined by XXXXXXXXXXXXXXXXXXXX
             # the road warrior importer cannot handle them.
             if name[0] == 'X' and name[1] == 'X' and name[2] == 'X' and name[4] == 'X':
@@ -52,22 +54,17 @@ class HermesUKPlugin(ConvertInterface):
             rowlist.append(country)            # Country
             rowlist.append(priority)              # Priority
             rowlist.append(postcode)    # Phone number
-            rowlist.append(self.chomp(notes))
-            self.rwdata.append(rowlist)
+            rowlist.append(chomp.chomp(notes))
+            data.append(rowlist)
+        self.m_rwdata[route] = data
   
     def convert(self, filenames):
         """
         actual conversion is done here
         """
-        self.rwdata = [] # empty rwdata
-        self.routes = []
+        self.rwdata = {} # empty rwdata
         for filename in filenames:
             fo = open(filename,  "r")
             self.parse_file(fo)
-        return self.routes
-        
-'''
-Created on 9 Oct 2017
-
-@author: simon
-'''
+            fo.close()
+         
