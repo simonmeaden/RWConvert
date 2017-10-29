@@ -394,8 +394,8 @@ class ConverterWidget(QMainWindow):
             self.config[FORMS]['include_routes'] = False
                         
     @pyqtSlot()
-    def handleCombineRoutesClicked(self, checked):
-        if checked:
+    def handleCombineRoutesClicked(self):
+        if self.combineRoutesBox.isChecked():
             self.config[FORMS]['combine_routes'] = True
         else:
             self.config[FORMS]['combine_routes'] = False
@@ -468,7 +468,9 @@ class ConverterWidget(QMainWindow):
                 for route in routedata.keys():
                     singleroute = routedata[route]
                     combined += singleroute
-                toexcel.create_workbook(combined, self.joinSavePath(self.savepath, self.savefile, self.saveext))
+                toexcel.create_workbook(combined, self.joinSavePath(self.config[PATHS]['save_path'], 
+                                                                    self.config[FILES]['save_file'], 
+                                                                    self.config[FILES]['save_ext']))
                 
             else:
                 i = 1
