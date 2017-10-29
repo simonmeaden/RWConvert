@@ -37,7 +37,7 @@ from openpyxl import Workbook
 import yaml
 from yaml import YAMLObject 
 from datetime import date, datetime
-import const
+# import const
 
 
 # constant values
@@ -461,26 +461,30 @@ class ConverterWidget(QMainWindow):
             toexcel = ToExcel()
      
             self.currentPlugin.convert(self.filenames)
-            routedata = self.currentPlugin.rwdata
+            routedata = self.currentPlugin.data
             
             if self.config[FORMS]['combine_routes']:
                 combined = []
                 for route in routedata.keys():
-                    l = routedata[route]
-                    combined += l
+                    singleroute = routedata[route]
+                    combined += singleroute
                 toexcel.create_workbook(combined, self.joinSavePath(self.savepath, self.savefile, self.saveext))
                 
             else:
                 i = 1
                 for route in routedata.keys():
-                    l = routedata[route]
-                    if self.includeRoutes and len(route) > 0:
-                        self.joinSavePath(self.savepath, self.savefile + '_' + route, self.saveext)
+                    singleroute = routedata[route]
+                    if self.config[FORMS]['include_routes'] and len(route) > 0:
+                        path = self.joinSavePath(self.config[PATHS]['save_path'], 
+                                          self.config[FILES]['save_file'] + '_' + route, 
+                                          self.config[FILES]['save_ext'])
                     else:
-                        self.joinSavePath(self.savepath, self.savefile + '(' + str(i) + ')', self.saveext)
+                        path = self.joinSavePath(self.config[PATHS]['save_path'], 
+                                          self.config[FILES]['save_file'] + '(' + str(i) + ')', 
+                                          self.config[FILES]['save_ext'])
                         i += 1
                         
-                    toexcel.create_workbook(combined, self.savefile)        
+                    toexcel.create_workbook(singleroute, path)        
         
     @pyqtSlot()
     def handleConverterChanged(self):
@@ -496,7 +500,10 @@ class ConverterWidget(QMainWindow):
         
     @pyqtSlot()
     def handleSelectSrcFiles(self):
-        fileDlg = QFileDialog(self, 'Select Files', self.downloadpath, self.filetypes)
+        fileDlg = QFileDialog(self, 
+                              'Select Files', 
+                              self.config[PATHS]['download_path'], 
+                              self.filetypes)
         fileDlg.setFileMode(QFileDialog.ExistingFiles)
 
         if fileDlg.exec_():
@@ -584,13 +591,13 @@ class ToExcel:
         ws['K1'] = 'Longitude'
         ws['L1'] = 'Service Time'
         col_list = 'ABCDEFGHIJKL'
-        for row in range(0,  len(self.data) - 1):
+        for row in range(0,  len(data) - 1):
             for col in range(0, 9):
                 cell = col_list[col] + str(row + 2)   
                 c = data[row][col]     
                 ws[cell] = c
         
-        wb.save(savefile)
+        wb.save(filename = savefile)
 
 
 logging.basicConfig(level=logging.DEBUG)
