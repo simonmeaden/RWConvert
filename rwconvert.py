@@ -15,7 +15,7 @@ from PyQt5.Qt import (
     QFileDialog,
     QGridLayout,
     QHBoxLayout,
-    QGroupBox,
+#     QGroupBox,
     QFrame, 
     QPushButton, 
     QListWidget,
@@ -516,7 +516,9 @@ class ConverterWidget(QMainWindow):
         
     @pyqtSlot()
     def handleAddSrcFiles(self):
-        fileDlg = QFileDialog(self, 'Select Files', self.downloadpath, self.filetypes)
+        fileDlg = QFileDialog(self, 'Select Files', 
+                              self.config[PATHS]['download_path'], 
+                              self.filetypes)
         fileDlg.setFileMode(QFileDialog.ExistingFiles)
 
         if fileDlg.exec_():
@@ -594,7 +596,7 @@ class ToExcel:
         ws['L1'] = 'Service Time'
         col_list = 'ABCDEFGHIJKL'
         for row in range(0,  len(data) - 1):
-            for col in range(0, 9):
+            for col in range(0, 11):
                 cell = col_list[col] + str(row + 2)   
                 c = data[row][col]     
                 ws[cell] = c
