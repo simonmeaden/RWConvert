@@ -15,7 +15,8 @@ from PyQt5.Qt import (
 from convert_iplugin import ConvertInterface
 # import stringutil
 from stringutil import StringUtil
-import database
+from string import punctuation
+
 import requests
 
 
@@ -82,6 +83,11 @@ class HermesUKPlugin(ConvertInterface):
             user_info = blocks[9]
             name = blocks[3]
             street = blocks[4].strip()
+            streetsplit = StringUtil.split_without(street, string.punctuation)
+            number = '0 '
+            if len(streetsplit) > 0 and streetsplit[0].isnumeric():
+                number = streetsplit[0] + ' '
+
 #             town = 'Paignton'
             self.region = 'Devon'
             postcode = blocks[0]
@@ -104,7 +110,7 @@ class HermesUKPlugin(ConvertInterface):
 
             address_details = self.getAddress(postcode)
             pc_streetdata = address_details.split(',')#StringUtil.split_without(address_details, ',')
-            street = pc_streetdata[0]
+            street = number + pc_streetdata[0]
             town = pc_streetdata[1].split()[0] # second part is the postcode again
 
 #             streetdata = StringUtil.split_without(street, string.punctuation)
