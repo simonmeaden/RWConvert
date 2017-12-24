@@ -8,7 +8,7 @@ import sys
 import os.path
 import appdirs
 from PyQt5.Qt import (
-    QApplication, 
+    QApplication,
     QDesktopWidget,
     QMainWindow,
     QTabWidget,
@@ -16,8 +16,8 @@ from PyQt5.Qt import (
     QGridLayout,
     QHBoxLayout,
 #     QGroupBox,
-    QFrame, 
-    QPushButton, 
+    QFrame,
+    QPushButton,
     QListWidget,
     QAbstractItemView,
     QComboBox,
@@ -35,7 +35,7 @@ from functools import partial
 from openpyxl import Workbook
 
 import yaml
-from yaml import YAMLObject 
+from yaml import YAMLObject
 from datetime import date, datetime
 # import const
 
@@ -45,11 +45,11 @@ PATHS = 'Paths'
 FILES = 'Files'
 FORMS = 'Forms'
 NAMES = 'Names'
- 
+
 class ConverterWidget(QMainWindow):
-    
+
     name = 'RWConvert'
-   
+
     # For easier usage calculate the path relative to here.
     here = os.path.abspath(os.path.dirname(__file__))
     getPath = partial(os.path.join, here)
@@ -65,15 +65,15 @@ class ConverterWidget(QMainWindow):
     currentPlugin = None
     filetypes = 'All Files (*.*)'
     config = {}
- 
+
     def __init__(self):
         '''
         init
         '''
-        
+
         super().__init__()
-        
-              
+
+
         """
         Read configuration file and return its contents
         """
@@ -89,7 +89,7 @@ class ConverterWidget(QMainWindow):
                 c = {} if c is None else c
                 if c != {}:
                     self.config = c
-                                            
+
         # and a source which loads the plugins from the "plugins"
         # folder.  We also pass the application name as identifier.  This
         # is optional but by doing this out plugins have consistent
@@ -109,35 +109,45 @@ class ConverterWidget(QMainWindow):
 
         self.initGui()
 #         self.showFullScreen()
-        
+
 
     def initConfig(self):
         if PATHS not in self.config: self.config[PATHS] = {}
         if FILES not in self.config: self.config[FILES] = {}
         if FORMS not in self.config: self.config[FORMS] = {}
         if NAMES not in self.config: self.config[NAMES] = {}
+
         self.config[PATHS]['homepath']       = os.path.expanduser('~')
         self.config[PATHS]['docpath']        = os.path.join(self.config[PATHS]['homepath'], 'Documents')
         self.config[PATHS]['download_path']  = os.path.join(self.config[PATHS]['homepath'], 'Downloads')
         self.config[PATHS]['save_path']      = os.path.join(self.config[PATHS]['docpath'], self.name)
         self.config[PATHS]['config_path']    = appdirs.user_config_dir(self.name)
+        self.config[PATHS]['db_path']        = self.config[PATHS]['config_path']
+
         self.config[FILES]['config_name']    = 'config.yaml'
+        self.config[FILES]['db_name']        = 'rwcovert.sqlite'
         self.config[FILES]['save_file']      = 'roadwarrior'
         self.config[FILES]['save_ext']       = '.xlsx'
-        self.config[FORMS]['include_date'] = False
-        self.config[FORMS]['prefix_date'] = False
+
+        self.config[FORMS]['include_date']   = False
+        self.config[FORMS]['prefix_date']    = False
         self.config[FORMS]['include_routes'] = False
         self.config[FORMS]['combine_routes'] = False
+
         self.config[NAMES]['current_plugin_name'] = ''
-        
+
         self.destFilename = self.config['Files']['save_file'] + self.config['Files']['save_ext']
+
+        # Create destination file directory if it doesn't already exist'
+        if not os.path.isdir(self.config[PATHS]['save_path']):
+            os.makedirs(self.config[PATHS]['save_path'])
 
 
     def initGui(self):
         self.setGeometry(300, 300, 800, 600)
         self.setWindowTitle('Road warrior Upload File Converter')
         self.center()
-        
+
         fMain = QFrame()
         mainLayout = QGridLayout()
         fMain.setLayout(mainLayout)
@@ -145,78 +155,94 @@ class ConverterWidget(QMainWindow):
 
         tabWidget = QTabWidget()
         mainLayout.addWidget(tabWidget, 0, 0)
-#         mainLayout.addWidget(self.initConvertPage(), 0, 0)
-        
+
         self.closeBtn = QPushButton('Close Application')
         self.closeBtn.clicked.connect(self.handleCloseClicked)
         mainLayout.addWidget(self.closeBtn, 1, 0)
-         
+
         tabWidget.addTab(self.initConvertPage(), 'Converter')
+        tabWidget.addTab(self.initResultPage(), 'Converter')
         tabWidget.addTab(self.initConfigPage(), 'Configuration')
-        
-         
+
+
+    def initResultPage(self):
+        f = QFrame()
+        l = QHBoxLayout()
+        f.setLayout(l)
+
+        self.convertedTabs = QTabWidget()
+        l.addWidget(self.convertedTabs)
+        '''
+        This just adds a blank page with an empty tab widget.
+        Pages are added on the fly when the files are converted as
+        this could involve one or many pages depending on combine_route
+        flag and number of routes.
+
+        self.convertedTabs is the empty tab widget
+        '''
+
+        return f
+
     def initConvertPage(self):
         f = QFrame()
         l = QGridLayout()
         f.setLayout(l)
 
         row = 0
-        
+
         l.addWidget(QLabel('Converter :'), row, 0)
         currentPluginBox = QComboBox()
         currentPluginBox.currentTextChanged.connect(self.selectPlugin)
         l.addWidget(currentPluginBox, row, 0, 1, 2)
-        for key in self.plugins.keys():                    
+        for key in self.plugins.keys():
             currentPluginBox.addItem(key)
         row += 1
-        
+
         destLbl = QLabel('Destination path :')
         destLbl.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
         l.addWidget(destLbl, row, 0)
-        self.destPathLbl = QLabel(self.joinSavePath(self.config[PATHS]['save_path'], 
-                                                    self.config[FILES]['save_file'], 
+        self.destPathLbl = QLabel(self.joinSavePath(self.config[PATHS]['save_path'],
+                                                    self.config[FILES]['save_file'],
                                                     self.config[FILES]['save_ext']))
         self.destPathLbl.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         l.addWidget(self.destPathLbl, row, 1)
 
         row += 1
-        
+
         f2 = QFrame()
         l2 = QHBoxLayout()
         f2.setLayout(l2)
         l2.addWidget(self.initFileFrame())
         l2.addWidget(self.initOutputSetup())
         l.addWidget(f2, row, 0, 1, 2)
-        
+
         row += 1
-        
+
         l.addWidget(self.initSrcFiles(), row, 0, 1, 2)
-        
+
         row += 1
-            
+
         self.convertBtn = QPushButton('Convert')
         self.convertBtn.clicked.connect(self.handleConvertClicked)
         self.convertBtn.setEnabled(False)
         l.addWidget(self.convertBtn, row, 0, 1, 2)
 
         return f
-    
+
     def initOutputSetup(self):
-        row = 0
-        
         f = QFrame()
         l = QGridLayout()
         f.setLayout(l)
 #         f.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Expanding)
-        
+
         l.addWidget(QLabel("Empty label"), 0, 0)
-        
+
         return f
-    
+
     def initSrcFiles(self):
-        
+
         row = 0
-        
+
         f = QFrame()
         l = QGridLayout()
         f.setLayout(l)
@@ -230,42 +256,48 @@ class ConverterWidget(QMainWindow):
         selectionModel = self.srcFilesList.selectionModel()
         selectionModel.selectionChanged.connect(self.handleSrcFilesSelectionChanged)
         l.addWidget(self.srcFilesList, row, 1, 3, 1)
-        
+
         self.srcFilesBtn = QPushButton('Select Files')
         self.srcFilesBtn.clicked.connect(self.handleSelectSrcFiles)
         self.srcFilesBtn.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Expanding)
         l.addWidget(self.srcFilesBtn, row, 2)
         row += 1
-            
+
         self.addFilesBtn = QPushButton('Add Files')
         self.addFilesBtn.clicked.connect(self.handleAddSrcFiles)
         self.addFilesBtn.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Expanding)
         l.addWidget(self.addFilesBtn, row, 2)
         row += 1
-            
+
         self.removeFilesBtn = QPushButton('Remove Files')
         self.removeFilesBtn.setEnabled(False)
         self.removeFilesBtn.clicked.connect(self.handleRemoveSrcFiles)
         self.removeFilesBtn.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Expanding)
         l.addWidget(self.removeFilesBtn, row, 2)
-        
+        row += 1
+
+        l.addWidget(QLabel('Destination Files :'), row, 0)
+        self.destFilesList = QListWidget()
+        self.destFilesList.setAlternatingRowColors(True)
+        l.addWidget(self.destFilesList, row, 1, 1, 2)
+
         return f
-    
+
     def initFileFrame(self):
         row = 0
-        
+
         f = QFrame()
         l = QGridLayout()
         f.setLayout(l)
 #         f.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Expanding)
-        
+
         l.addWidget(QLabel('Destination File :'), row, 0)
         self.destFilenameEdit = QLineEdit(self.destFilename)
         self.destFilenameEdit.setEnabled(False)
         self.destFilenameEdit.textChanged.connect(self.handleDestFilenameChanged)
         l.addWidget(self.destFilenameEdit, row, 1, 1, 3)
         row += 1
-        
+
         self.combineRoutesBox = QCheckBox('combine_routes')
         if self.config[FORMS]['combine_routes']:
             self.combineRoutesBox.setChecked(True)
@@ -275,7 +307,7 @@ class ConverterWidget(QMainWindow):
         self.combineRoutesBox.setEnabled(False)
         l.addWidget(self.combineRoutesBox, row, 0, 1, 3)
         row += 1
-        
+
         addDateInNameBox = QCheckBox('Add date to filename')
         addDateInNameBox.clicked.connect(self.handleAddDateClicked)
         l.addWidget(addDateInNameBox, row, 0, 1, 3)
@@ -290,77 +322,77 @@ class ConverterWidget(QMainWindow):
 
         l.addWidget(self.prefixDateInNameBox, row, 1, 1, 2)
         row += 1
-        
+
         addRouteInNameBox = QCheckBox('Add route to filename')
         addRouteInNameBox.clicked.connect(self.handleAddRouteClicked)
         l.addWidget(addRouteInNameBox, row, 0)
 #         row += 1
-                                        
+
         return f
-        
-    
+
+
     def initConfigPage(self):
         row = 0
-        
+
         f = QFrame()
         l = QGridLayout()
         f.setLayout(l)
-        
+
         srcLbl = QLabel('Source directory :')
         srcLbl.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
         l.addWidget(srcLbl, row, 0)
-        
+
         self.srcDirBox = QLineEdit()
         self.srcDirBox.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.srcDirBox.setText(self.config[PATHS]['download_path'])
         l.addWidget(self.srcDirBox, row, 1)
-        
+
         srcDirSelectBtn = QPushButton('Select')
         srcDirSelectBtn.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
         srcDirSelectBtn.clicked.connect(self.handleSelectSrcDirectory)
         l.addWidget(srcDirSelectBtn, row, 2)
-        
+
         row += 1
-    
+
         destLbl = QLabel('Destination directory :')
         destLbl.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
         l.addWidget(destLbl, row, 0)
-        
+
         self.destDirBox = QLineEdit()
         self.destDirBox.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.destDirBox.setText(self.config[PATHS]['save_path'])
         l.addWidget(self.destDirBox, row, 1)
-        
+
         destDirSelectBtn = QPushButton('Select')
         destDirSelectBtn.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
         destDirSelectBtn.clicked.connect(self.handleSelectDestDirectory)
         l.addWidget(destDirSelectBtn, row, 2)
-        
+
         row += 1
-         
+
         l.addWidget(QFrame(), row, 0, 1, 3)
-        
+
         return f
-    
-    def handleSelectSrcDirectory(self):                                      
+
+    def handleSelectSrcDirectory(self):
         directory = QFileDialog.getExistingDirectory(self,
-                                                     'Select Source Directory', 
-                                                     self.config[PATHS]['download_path'], 
-                                                     QFileDialog.ShowDirsOnly);  
+                                                     'Select Source Directory',
+                                                     self.config[PATHS]['download_path'],
+                                                     QFileDialog.ShowDirsOnly);
         if not directory == '':
             self.config[PATHS]['download_path'] = directory
             self.srcDirBox.setText(directory)
 
-        
+
     def handleSelectDestDirectory(self):
         directory = QFileDialog.getExistingDirectory(self,
-                                                     'Select Destination Directory', 
-                                                     self.config[PATHS]['save_path'], 
-                                                     QFileDialog.ShowDirsOnly);  
+                                                     'Select Destination Directory',
+                                                     self.config[PATHS]['save_path'],
+                                                     QFileDialog.ShowDirsOnly);
         if not directory == '':
             self.config[PATHS]['save_path'] = directory
             self.destDirBox.setText(directory)
-            
+
     def joinSavePath(self, path, filename, ext):
         newpath = os.path.join(path, filename)
         newpath += ext
@@ -374,7 +406,7 @@ class ConverterWidget(QMainWindow):
         else:
             self.config[FORMS]['include_path'] = False
             self.prefixDateInNameBox.setEnabled(False)
-            
+
     @pyqtSlot()
     def handlePrefixDateClicked(self):
         if self.config[FORMS]['prefix_date']:
@@ -392,17 +424,17 @@ class ConverterWidget(QMainWindow):
             self.config[FORMS]['include_routes'] = True
         else:
             self.config[FORMS]['include_routes'] = False
-                        
+
     @pyqtSlot()
     def handleCombineRoutesClicked(self):
         if self.combineRoutesBox.isChecked():
             self.config[FORMS]['combine_routes'] = True
         else:
             self.config[FORMS]['combine_routes'] = False
-            
+
         self.enableStuff()
-            
-    def enableStuff(self):     
+
+    def enableStuff(self):
         if self.srcFilesList.model().rowCount() == 0:
             self.convertBtn.setEnabled(False)
             self.combineRoutesBox.setEnabled(False)
@@ -418,9 +450,9 @@ class ConverterWidget(QMainWindow):
                 self.destFilenameEdit.setEnabled(True)
             else:
                 self.destFilenameEdit.setEnabled(False)
-            
+
     @pyqtSlot()
-    def handleDestFilenameChanged(self, text):        
+    def handleDestFilenameChanged(self, text):
         if len(text) > 0:
             if self.config[PATHS]['include_path']:
                 year = datetime.year
@@ -437,57 +469,60 @@ class ConverterWidget(QMainWindow):
                     name = text + '_' + datestr
             else:
                 name = text
-                       
+
             self.config[FILES]['save file'] = name
             self.destPathLbl.setText(self.joinSavePath(self.savepath, self.savefile, self.saveext))
-          
+
     def createDestinationFilePath(self):
         return self.joinSavePath(self.savepath, self.savefile, self.saveext)
-            
+
     @pyqtSlot()
     def handleSrcFilesSelectionChanged(self, selected):
         if len(selected.indexes()) > 0:
             self.removeFilesBtn.setEnabled(True)
         else:
             self.removeFilesBtn.setEnabled(False)
-              
+
     @pyqtSlot()
     def handleSrcFilesChanged(self):
         self.enableStuff()
-        
+
     @pyqtSlot()
     def handleConvertClicked(self):
         if len(self.filenames) > 0:
             toexcel = ToExcel()
-     
+
             self.currentPlugin.convert(self.filenames)
             routedata = self.currentPlugin.data
-            
+
             if self.config[FORMS]['combine_routes']:
                 combined = []
                 for route in routedata.keys():
                     singleroute = routedata[route]
                     combined += singleroute
-                toexcel.create_workbook(combined, self.joinSavePath(self.config[PATHS]['save_path'], 
-                                                                    self.config[FILES]['save_file'], 
-                                                                    self.config[FILES]['save_ext']))
-                
+                path = self.joinSavePath(self.config[PATHS]['save_path'],
+                                                                    self.config[FILES]['save_file'],
+                                                                    self.config[FILES]['save_ext'])
+                toexcel.create_workbook(combined, path)
+                self.destFilesList.addItem(path)
+
             else:
                 i = 1
                 for route in routedata.keys():
                     singleroute = routedata[route]
                     if self.config[FORMS]['include_routes'] and len(route) > 0:
-                        path = self.joinSavePath(self.config[PATHS]['save_path'], 
-                                          self.config[FILES]['save_file'] + '_' + route, 
+                        path = self.joinSavePath(self.config[PATHS]['save_path'],
+                                          self.config[FILES]['save_file'] + '_' + route,
                                           self.config[FILES]['save_ext'])
                     else:
-                        path = self.joinSavePath(self.config[PATHS]['save_path'], 
-                                          self.config[FILES]['save_file'] + '(' + str(i) + ')', 
+                        path = self.joinSavePath(self.config[PATHS]['save_path'],
+                                          self.config[FILES]['save_file'] + '(' + str(i) + ')',
                                           self.config[FILES]['save_ext'])
                         i += 1
-                        
-                    toexcel.create_workbook(singleroute, path)        
-        
+
+                    toexcel.create_workbook(singleroute, path)
+                    self.destFilesList.addItem(path)
+
     @pyqtSlot()
     def handleConverterChanged(self):
         pluginName = self.currentPluginBox.currentText()
@@ -499,25 +534,25 @@ class ConverterWidget(QMainWindow):
     @pyqtSlot()
     def handleCloseClicked(self):
         self.close()
-        
+
     @pyqtSlot()
     def handleSelectSrcFiles(self):
-        fileDlg = QFileDialog(self, 
-                              'Select Files', 
-                              self.config[PATHS]['download_path'], 
+        fileDlg = QFileDialog(self,
+                              'Select Files',
+                              self.config[PATHS]['download_path'],
                               self.filetypes)
         fileDlg.setFileMode(QFileDialog.ExistingFiles)
 
         if fileDlg.exec_():
             self.filenames = fileDlg.selectedFiles()
-            
+
         self.srcFilesList.clear()
         self.srcFilesList.addItems(self.filenames)
-        
+
     @pyqtSlot()
     def handleAddSrcFiles(self):
-        fileDlg = QFileDialog(self, 'Select Files', 
-                              self.config[PATHS]['download_path'], 
+        fileDlg = QFileDialog(self, 'Select Files',
+                              self.config[PATHS]['download_path'],
                               self.filetypes)
         fileDlg.setFileMode(QFileDialog.ExistingFiles)
 
@@ -526,7 +561,7 @@ class ConverterWidget(QMainWindow):
                 if filename not in self.filenames:
                     self.filenames.append(filename)
                     self.srcFilesList.addItem(filename)
-            
+
     @pyqtSlot()
     def handleRemoveSrcFiles(self):
         selectedModel = self.srcFilesList.selectionModel()
@@ -536,7 +571,7 @@ class ConverterWidget(QMainWindow):
             self.filenames.remove(name)
             self.srcFilesList.takeItem(index.row())
         selectedModel.clear()
-        
+
     @pyqtSlot(str)
     def selectPlugin(self, name):
             # activate the current plugin
@@ -544,37 +579,37 @@ class ConverterWidget(QMainWindow):
             self.config[NAMES]['current_plugin_name'] = name
             self.currentPlugin = self.plugins[name]
             self.filetypes = self.currentPlugin.filetypes
-            
-    def center(self):    
+
+    def center(self):
         qr = self.frameGeometry()
         cp = QDesktopWidget().availableGeometry().center()
         qr.moveCenter(cp)
         self.move(qr.topLeft())
-        
-   
+
+
     def exportConfig(self):
         with open(self.cfgFileName, 'w') as configFile:
             yaml.dump(self.config, configFile)
-            
+
     def createUserConfig(self):
         """
         Create the user's config file in OS specific location
         """
         os.makedirs(os.path.dirname(self.cfgFileName), exist_ok=True)
         self.exportConfig()
-            
+
     def closeEvent(self, event):
-        buttonReply = QMessageBox.warning(self, 
-                                          'Close Application', 
+        buttonReply = QMessageBox.warning(self,
+                                          'Close Application',
                                           'You are about to close the Application,'
                                           ' Press Yes to continue or Cancel to return to the Application',
                                            QMessageBox.Yes | QMessageBox.Cancel, QMessageBox.Cancel)
         if buttonReply == QMessageBox.Yes:
             self.exportConfig()
             exit()
- 
+
 class ToExcel:
-    
+
     def __init__(self):
         '''
         '''
@@ -597,20 +632,20 @@ class ToExcel:
         col_list = 'ABCDEFGHIJKL'
         for row in range(0,  len(data) - 1):
             for col in range(0, 11):
-                cell = col_list[col] + str(row + 2)   
-                c = data[row][col]     
+                cell = col_list[col] + str(row + 2)
+                c = data[row][col]
                 ws[cell] = c
-        
+
         wb.save(filename = savefile)
 
 
 logging.basicConfig(level=logging.DEBUG)
 
 if __name__ == '__main__':
-    
+
     app = QApplication(sys.argv)
-    
+
     w = ConverterWidget()
     w.show()
-    
+
     sys.exit(app.exec_())
