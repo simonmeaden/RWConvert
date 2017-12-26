@@ -104,7 +104,7 @@ class ConverterWidget(QMainWindow):
         for pluginName in self.source.list_plugins():
             plugin = self.source.load_plugin(pluginName)
             pluginClass = getattr(plugin, pluginName)
-            instance = pluginClass()
+            instance = pluginClass(self.config)
             self.plugins[pluginName] = instance
 
         self.initGui()
@@ -122,10 +122,10 @@ class ConverterWidget(QMainWindow):
         self.config[PATHS]['download_path']  = os.path.join(self.config[PATHS]['homepath'], 'Downloads')
         self.config[PATHS]['save_path']      = os.path.join(self.config[PATHS]['docpath'], self.name)
         self.config[PATHS]['config_path']    = appdirs.user_config_dir(self.name)
-        self.config[PATHS]['db_path']        = self.config[PATHS]['config_path']
+        self.config[PATHS]['db_path']        = os.path.join(self.config[PATHS]['config_path'], 'data')
 
         self.config[FILES]['config_name']    = 'config.yaml'
-        self.config[FILES]['db_name']        = 'rwcovert.sqlite'
+        self.config[FILES]['db_name']        = 'rwconvert.sqlite'
         self.config[FILES]['save_file']      = 'roadwarrior'
         self.config[FILES]['save_ext']       = '.xlsx'
 
@@ -139,8 +139,12 @@ class ConverterWidget(QMainWindow):
         self.destFilename = self.config['Files']['save_file'] + self.config['Files']['save_ext']
 
         # Create destination file directory if it doesn't already exist'
-        if not os.path.isdir(self.config[PATHS]['save_path']):
-            os.makedirs(self.config[PATHS]['save_path'])
+#         if not os.path.exists(self.config[PATHS]['config_path']):
+        os.makedirs(self.config[PATHS]['config_path'], exist_ok=True)
+#         if not os.path.exists(self.config[PATHS]['db_path']):
+        os.makedirs(self.config[PATHS]['db_path'], exist_ok=True)
+#         if not os.path.exists(self.config[PATHS]['save_path']):
+        os.makedirs(self.config[PATHS]['save_path'], exist_ok=True)
 
 
     def initGui(self):
