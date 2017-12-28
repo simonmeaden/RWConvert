@@ -16,7 +16,8 @@ from convert_iplugin import ConvertInterface
 from stringutil import StringUtil
 import requests
 from db.database import Database
-from RWConvertUtils.RWConvertUtils import RWConvertUtils
+# from RWConvertUtils.RWConvertUtils import RWConvertUtils
+from addressparser.RWAddressParser import RWAddressParser
 
 # constant values
 PATHS = 'Paths'
@@ -93,14 +94,14 @@ class HermesUKPlugin(ConvertInterface):
             street = blocks[4].strip()
 
             streetsplit = StringUtil.split_without(street, string.punctuation)
-            streetsplit = RWConvertUtils.removeAbbreviations(streetsplit)
-            number = '0 '
-            namedHouse = False
-            if len(streetsplit) > 0:
-                if streetsplit[0].isnumeric():
-                    number = streetsplit[0] + ' '
-                else:
-                    namedHouse = True
+#             streetsplit = RWConvertUtils.removeAbbreviations(streetsplit)
+#             number = '0 '
+#             namedHouse = False
+#             if len(streetsplit) > 0:
+#                 if streetsplit[0].isnumeric():
+#                     number = streetsplit[0] + ' '
+#                 else:
+#                     namedHouse = True
 
 #             town = 'Paignton'
             self.region = 'Devon'
