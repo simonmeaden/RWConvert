@@ -12,12 +12,13 @@ from PyQt5.Qt import (
     QFrame,
     QGridLayout
     )
-from convert_iplugin import ConvertInterface
+from convert_iplugin import ConvertInterface, AddressType, GAddress
 from stringutil import StringUtil
 import requests
 from db.database import Database
 # from RWConvertUtils.RWConvertUtils import RWConvertUtils
 from addressparser.RWAddressParser import RWAddressParser
+import convert_iplugin
 
 # constant values
 PATHS = 'Paths'
@@ -82,68 +83,35 @@ class HermesUKPlugin(ConvertInterface):
         db = Database(self.config[PATHS]['db_path'], self.config[FILES]['db_name'])
 
     def parse_file(self,  fo):
+        parser = RWAddressParser()
         lines = fo.readlines()
         data = []
         for line in lines:
             blocks = line.split(',')
-            route = blocks[8][3:6]
-            sender = blocks[6] # the compay/person sending the package - added to note
-            info = blocks[7]
-            user_info = blocks[9]
-            name = blocks[3]
-            street = blocks[4].strip()
 
-            streetsplit = StringUtil.split_without(street, string.punctuation)
-#             streetsplit = RWConvertUtils.removeAbbreviations(streetsplit)
-#             number = '0 '
-#             namedHouse = False
-#             if len(streetsplit) > 0:
-#                 if streetsplit[0].isnumeric():
-#                     number = streetsplit[0] + ' '
-#                 else:
-#                     namedHouse = True
+            route = street = sender = info = user_info = phone = postcode = ''
+            if len(blocks) > 0: postcode = blocks[0]
+            # 1 & 2 are internal codes defining parcel type - not used here
+            if len(blocks) > 3: name = blocks[3]
+            if len(blocks) > 4: street = blocks[4].strip()
+            if len(blocks) > 5: phone = blocks[5].strip()
+            if len(sender) > 6: sender = blocks[6] # the company/person sending the package - added to note
+            if len(blocks) > 7: info = blocks[7]
+            if len(blocks) > 8: route = blocks[8][3:6]
+            if len(user_info) > 9: user_info = blocks[9]
 
-#             town = 'Paignton'
-            self.region = 'Devon'
-            postcode = blocks[0]
-            phone = blocks[5]
-            country = 'UK'#'GB'
-            priority = '1.0'
-            '''
-            Uninitialised hermes deliveries are defined by XXXXXXXXXXXXXXXXXXXX
-            the road warrior importer cannot handle them so you will need
-            to enter them manually..
-            '''
-            if name[0] == 'X' and name[1] == 'X' and name[2] == 'X' and name[4] == 'X':
-                '''
-                show that there were some uninitialised entries???
-                '''
-                continue
-            notes = route + ' : ' + sender + ' : ' + info+ ' : ' + user_info
-            rowlist = []
-            rowlist.append(name)     # pluginname
+            address = parser.parse(street, postcode, name)
 
-            address_details = self.getAddress(postcode)
-            pc_streetdata = address_details.split(',')#StringUtil.split_without(address_details, ',')
-            street = number + pc_streetdata[0]
-            town = pc_streetdata[1].split()[0] # second part is the postcode again
-
-#             streetdata = StringUtil.split_without(street, string.punctuation)
-#             if len(pc_streetdata) > 0:
-#                 if not pc_streetdata[0].isnumeric():
-#                     # do something to recover house number
-#                     pass
-
-            rowlist.append(street)     # should be number + street
-            rowlist.append(town) # town/city
-            rowlist.append(self.region)       # County/State
+            rowlist.append(address.address())     # should be number + street
+            rowlist.append(address.city) # town/city
+            rowlist.append(address.region2)       # County/State
             rowlist.append(postcode)     # postcode
-            rowlist.append(country)            # Country
-            rowlist.append(priority)              # Priority
+            rowlist.append(address.country)            # Country
+            rowlist.append("1.0")              # Priority
             rowlist.append(phone)    # Phone number
             rowlist.append(StringUtil.chomp(notes))
-            rowlist.append(self.lat)
-            rowlist.append(self.lon)
+            rowlist.append(address.lat)
+            rowlist.append(address.lon)
             data.append(rowlist)
         self.m_rwdata[route] = data
 

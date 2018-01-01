@@ -1,35 +1,25 @@
-CREATE TABLE IF NOT EXISTS streetname (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name VARCHAR(50)
+CREATE TABLE IF NOT EXISTS "housename" (
+    "id" INTEGER PRIMARY KEY AUTOINCREMENT,
+    "street_id" INTEGER,
+    "name" VARCHAR(50),
+    "latitude" INTEGER,
+    "longitude" INTEGER
 );
-CREATE TABLE IF NOT EXISTS postcode (
-    street_id INTEGER PRIMARY KEY AUTOINCREMENT,
-    code VARCHAR(20)
+CREATE TABLE IF NOT EXISTS "postcode" (
+	"id" INTEGER PRIMARY KEY AUTOINCREMENT,
+    "street_id" INTEGER,
+    "code" VARCHAR(20)
 );
-CREATE TABLE IF NOT EXISTS country (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name VARCHAR(20)
-);
-CREATE TABLE IF NOT EXISTS region (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name VARCHAR(50)
-);
-CREATE TABLE IF NOT EXISTS cities (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name VARCHAR(20)
-);
-CREATE TABLE IF NOT EXISTS housenames (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    street_id INTEGER,
-    name VARCHAR(50),
-    latitude INTEGER,
-    longitude INTEGER
-);
-CREATE TABLE IF NOT EXISTS streetnames (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    postcode INTEGER,
-    streetname INTEGER,
-    regionname INTEGER,
-    cityname INTEGER,
-    country INTEGER
+CREATE TABLE IF NOT EXISTS "region" (
+    "id" INTEGER PRIMARY KEY AUTOINCREMENT,
+    "name" VARCHAR(50),
+    "country_id" INTEGER);
+CREATE TABLE IF NOT EXISTS "city" (
+    "id" INTEGER PRIMARY KEY AUTOINCREMENT,
+    "name" VARCHAR(20),
+    "region_id" INTEGER);
+CREATE TABLE IF NOT EXISTS "street" (
+    "id" INTEGER PRIMARY KEY AUTOINCREMENT,
+    "city_id" INTEGER,
+    "name" VARCHAR(50)
 );

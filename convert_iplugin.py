@@ -5,6 +5,37 @@ Created on 5 Oct 2017
 '''
 import abc
 from pluginbase import PluginBase
+from enum import Enum
+
+class AddressType(Enum):
+    NONE = 0
+    HOUSE_NUMBER = 1
+    HOUSE_NAME = 2
+
+# Address = collections.namedtuple("Address", ['form_add', 'lat' 'lon'])
+class GAddress:
+    lat = ''
+    lon = ''
+    form_add = ''
+    place_id = ''
+    street = ''
+    city = ''
+    region1 = ''
+    region2 = ''
+    country = ''
+    house_name = ''
+    house_number = ''
+    type = AddressType.NONE
+    postcode = ''
+
+    def address(self):
+        if self.type == AddressType.HOUSE_NUMBER:
+            return self.house_number + ' ' + self.street
+        elif self.type == AddressType.HOUSE_NAME:
+            return self.house_name + ' ' + self.street
+        else:
+            return ''
+
 
 class RWData:
     name = ''
