@@ -25,12 +25,15 @@ from PyQt5.Qt import (
     QLabel,
     QLineEdit,
     QSizePolicy,
-    QMessageBox
+    QMessageBox,
+    QPlainTextEdit,
     )
 from PyQt5.QtCore import pyqtSlot
 
 from pluginbase import PluginBase
 from functools import partial
+
+from signals.CommSignals import CommSignals
 
 from openpyxl import Workbook
 
@@ -45,7 +48,8 @@ PATHS = 'Paths'
 FILES = 'Files'
 FORMS = 'Forms'
 NAMES = 'Names'
-
+    
+    
 class ConverterWidget(QMainWindow):
 
     name = 'RWConvert'
@@ -72,6 +76,8 @@ class ConverterWidget(QMainWindow):
         '''
 
         super().__init__()
+        
+        self.comms = CommSignals()
 
 
         """
@@ -104,7 +110,7 @@ class ConverterWidget(QMainWindow):
         for pluginName in self.source.list_plugins():
             plugin = self.source.load_plugin(pluginName)
             pluginClass = getattr(plugin, pluginName)
-            instance = pluginClass(self.config)
+            instance = pluginClass(self.config, self.comms)
             self.plugins[pluginName] = instance
 
         self.initGui()
@@ -197,14 +203,12 @@ class ConverterWidget(QMainWindow):
         l.addWidget(QLabel('Converter :'), row, 0)
         currentPluginBox = QComboBox()
         currentPluginBox.currentTextChanged.connect(self.selectPlugin)
-        l.addWidget(currentPluginBox, row, 0, 1, 2)
+        l.addWidget(currentPluginBox, row, 1)
         for key in self.plugins.keys():
             currentPluginBox.addItem(key)
         row += 1
 
-        destLbl = QLabel('Destination path :')
-        destLbl.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
-        l.addWidget(destLbl, row, 0)
+        l.addWidget(QLabel('Destination path :'), row, 0)
         self.destPathLbl = QLabel(self.joinSavePath(self.config[PATHS]['save_path'],
                                                     self.config[FILES]['save_file'],
                                                     self.config[FILES]['save_ext']))
@@ -216,30 +220,30 @@ class ConverterWidget(QMainWindow):
         f2 = QFrame()
         l2 = QHBoxLayout()
         f2.setLayout(l2)
+        
+        f3 = QFrame()
+        l3 = QGridLayout()
+        f3.setLayout(l3)
+        
+        l3.addWidget(QLabel('Destination Files :'), 0, 0)
+        self.destFilesList = QListWidget()
+        self.destFilesList.setAlternatingRowColors(True)
+        l3.addWidget(self.destFilesList, 1, 0)
+
         l2.addWidget(self.initFileFrame())
-        l2.addWidget(self.initOutputSetup())
-        l.addWidget(f2, row, 0, 1, 2)
+        l2.addWidget(f3)
+        l.addWidget(f2, row, 0, 1, 3)
 
         row += 1
 
-        l.addWidget(self.initSrcFiles(), row, 0, 1, 2)
+        l.addWidget(self.initSrcFiles(), row, 0, 1, 3)
 
         row += 1
 
         self.convertBtn = QPushButton('Convert')
         self.convertBtn.clicked.connect(self.handleConvertClicked)
         self.convertBtn.setEnabled(False)
-        l.addWidget(self.convertBtn, row, 0, 1, 2)
-
-        return f
-
-    def initOutputSetup(self):
-        f = QFrame()
-        l = QGridLayout()
-        f.setLayout(l)
-#         f.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Expanding)
-
-        l.addWidget(QLabel("Empty label"), 0, 0)
+        l.addWidget(self.convertBtn, row, 0, 1, 3)
 
         return f
 
@@ -280,10 +284,10 @@ class ConverterWidget(QMainWindow):
         l.addWidget(self.removeFilesBtn, row, 2)
         row += 1
 
-        l.addWidget(QLabel('Destination Files :'), row, 0)
-        self.destFilesList = QListWidget()
-        self.destFilesList.setAlternatingRowColors(True)
-        l.addWidget(self.destFilesList, row, 1, 1, 2)
+        self.errorEdit = QPlainTextEdit()
+        self.errorEdit.setReadOnly(True)
+        l.addWidget(self.errorEdit, row, 1, 1, 2)
+        self.comms.errorSignal.connect(self.errorEdit.appendPlainText)
 
         return f
 
@@ -299,7 +303,7 @@ class ConverterWidget(QMainWindow):
         self.destFilenameEdit = QLineEdit(self.destFilename)
         self.destFilenameEdit.setEnabled(False)
         self.destFilenameEdit.textChanged.connect(self.handleDestFilenameChanged)
-        l.addWidget(self.destFilenameEdit, row, 1, 1, 3)
+        l.addWidget(self.destFilenameEdit, row, 1)
         row += 1
 
         self.combineRoutesBox = QCheckBox('combine_routes')
@@ -309,12 +313,12 @@ class ConverterWidget(QMainWindow):
             self.combineRoutesBox.setChecked(False)
         self.combineRoutesBox.clicked.connect(self.handleCombineRoutesClicked)
         self.combineRoutesBox.setEnabled(False)
-        l.addWidget(self.combineRoutesBox, row, 0, 1, 3)
+        l.addWidget(self.combineRoutesBox, row, 0)
         row += 1
 
         addDateInNameBox = QCheckBox('Add date to filename')
         addDateInNameBox.clicked.connect(self.handleAddDateClicked)
-        l.addWidget(addDateInNameBox, row, 0, 1, 3)
+        l.addWidget(addDateInNameBox, row, 0)
         if self.config[FORMS]['prefix_date']:
             self.prefixDateInNameBox = QPushButton('prefix_date')
             self.prefixDateInNameBox.setEnabled(False)
@@ -324,7 +328,7 @@ class ConverterWidget(QMainWindow):
         self.prefixDateInNameBox.setToolTip('Click to change to prefix date.')
         self.prefixDateInNameBox.clicked.connect(self.handlePrefixDateClicked)
 
-        l.addWidget(self.prefixDateInNameBox, row, 1, 1, 2)
+        l.addWidget(self.prefixDateInNameBox, row, 1)
         row += 1
 
         addRouteInNameBox = QCheckBox('Add route to filename')
@@ -643,7 +647,7 @@ class ToExcel:
         wb.save(filename = savefile)
 
 
-logging.basicConfig(level=logging.DEBUG)
+# logging.basicConfig(level=logging.DEBUG)
 
 if __name__ == '__main__':
 

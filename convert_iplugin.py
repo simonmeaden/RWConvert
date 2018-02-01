@@ -6,6 +6,7 @@ Created on 5 Oct 2017
 import abc
 from pluginbase import PluginBase
 from enum import Enum
+from signals import CommSignals
 
 class AddressType(Enum):
     NONE = 0
@@ -48,13 +49,15 @@ class ConvertInterface(abc.ABC, PluginBase):
     m_filetypes = []
     m_rwdata = {}
     config = {}
+    comms = None
 
 
-    def __init__(self, config):
+    def __init__(self, config, comms):
         """
         init
         """
         self.config = config
+        self.comms = comms
 
     '''
     convert is an abstract method which you need to implement in your plugin.

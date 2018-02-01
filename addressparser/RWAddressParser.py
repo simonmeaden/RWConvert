@@ -10,9 +10,13 @@ from postal.parser import parse_address
 import requests
 import collections
 import string
+from string import whitespace
 from enum import Enum
 from db.database import Database
-import convert_iplugin
+from convert_iplugin import AddressType, GAddress
+from stringutil import StringUtil
+import re
+import pytest
 
 class RWAddressParser(object):
     '''
@@ -25,25 +29,43 @@ class RWAddressParser(object):
     search_url = 'https://maps.googleapis.com/maps/api/place/textsearch/json'
     details_url = 'https://maps.googleapis.com/maps/api/place/details/json'
     geocode_url = 'http://maps.googleapis.com/maps/api/geocode/json?'
-    county_search_url = 'https://maps.googleapis.com/maps/api/geocode/json' #?address=Winnetka&key=YOUR_API_KEY
+    db = None
+
+
 #]
-    def __init__(self):
+    def __init__(self, db_path, db_name):
         '''
         Constructor
         '''
-        pass
+        self.db = Database(db_path, db_name)
+
 
     def parse(self, street, postcode, customer = ''):
 
+        '''Initially try to download default latlon from db '''
+#         def_latlon = self.db.getDefaultLatLonFromDB(postcode)
+
         ''' Download data from Google, expand name forms 'Rd' to 'road' etc.
         Parse using pypostal to more manageable forms. '''
-        g_address = self.getAddressFromGoogle(postcode)
+        g_address = self.getGoogleAddressFromPostcode(postcode)
+#         ll_address = self.getGoogleAddressFromLatLon(g_address.lat, g_address.lon)
         ge_address = expand_address(g_address.form_add)
         gp_address = parse_address(ge_address[0])
         ''' Expand supplied address, expand also and parse into more
         manageable forms '''
         s_address = expand_address(street)[0] # pypostal expands rd to road etc
         sp_address = parse_address(s_address)
+        s_address = StringUtil.titlecase(s_address)
+        country = g_address.country
+        country_id = self.db.getCountryIdFromDB(country)
+        region = g_address.region2
+        region_id = self.db.insertRegionIntoDB(region, country_id)
+        city = StringUtil.titlecase(g_address.city)
+        city_id = self.db.insertCityIntoDB(city, region_id)
+        def_lat = g_address.lat
+        def_lon = g_address.lon
+        
+        self.db.insertStreetIntoDB(s_address, city_id, postcode, def_lat, def_lon)
 
         # Combine the two data sets.
         address_data = sp_address + gp_address;
@@ -80,10 +102,46 @@ class RWAddressParser(object):
         ''' The next most common is the house name + street name. This will need
         to check the internal database to see if the house name is registered.'''
         if g_address.type == AddressType.HOUSE_NAME:
-            db = Database()
+            pass
+
+    @staticmethod
+    def validatePostcode(postcode):
+        '''
+         check for valid characters. should be one of:
+         CCDD DCC two letters two digits space digit two characters
+         CCD DCC  two letters one digit space digit two letters
+         CCDC DCC two letters one digit one letter space one digit two letters
+        '''
+
+        ''' first remove any whitespace '''
+        code = postcode.translate(dict.fromkeys(map(ord, whitespace)))
+        ''' then make it uppercase '''
+        code = code.upper()
+        ''' then split the inwardcode from the outwardcode '''
+        if len(code) < 6 or len(code) > 7:
+            return (False, postcode) # invalid postcode, must be 6 or 7 chars after whitespace removal.
+        else:
+            inward = StringUtil.right(code, 3)
+            if len(code) == 6:
+                outward = StringUtil.left(code, 3)
+            elif len(code) == 7:
+                outward = StringUtil.left(code, 4)
+
+            # inward always one digit + two characters
+            p = re.compile('\d[A-Z]{2}')
+#             print(p.match(inward))
+            if not p.match(inward):
+                return (False, postcode)
+
+            p = re.compile('[A-Z]{2}(\d|\d\d|\d[A-Z])')
+#             print(p.match(outward))
+            if not p.match(outward):
+                return (False, postcode)
+
+            return (True, outward + ' ' + inward)
 
 
-    def getAddressFromGoogle(self, postcode):
+    def getGoogleAddressFromPostcode(self, postcode):
         address = GAddress()
         search_payload = {'key':'AIzaSyCAZVZOLgF4htpnLsAGkCZi7ygAsI7aFts', 'query':postcode}
         search_req = requests.get(self.search_url, params=search_payload)
@@ -114,3 +172,20 @@ class RWAddressParser(object):
 
         return address
 
+    def getGoogleAddressFromLatLon(self, latitude, longitude):
+#         address = GAddress()
+        base = "http://maps.googleapis.com/maps/api/geocode/json?"
+        params = "latlng={lat},{lon}&sensor={sen}".format(
+            lat = latitude,
+            lon = longitude,
+            sen = 'true'
+            )
+        url = "{base}{params}".format(base=base, params=params)
+        response = requests.get(url)
+        form_addr = response.json['results'][0]['formatted_address']
+        return form_addr
+        
+
+    
+# if __name__ == '__main__':
+# pytest.main()

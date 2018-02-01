@@ -69,21 +69,21 @@ class HermesUKPlugin(ConvertInterface):
     config = {}
 
 
-    def __init__(self, config):
+    def __init__(self, config, comms):
         '''
         Constructor
         '''
-        super().__init__(config)
+        super().__init__(config, comms)
         self.pluginname = 'Hermes (UK) manifest CSV Converter'
         self.plugindescription = ('Converts Hermes (UK) CSV manifest files into '
                                   ' a format that Road Warrior online Upload facility understands,'
                                   ' basically an Excel xlsx file.')
         self.filetypes = 'Manifest CSV Files (manifest*.csv)'
 
-        db = Database(self.config[PATHS]['db_path'], self.config[FILES]['db_name'])
+#         db = Database(self.config[PATHS]['db_path'], self.config[FILES]['db_name'])
 
     def parse_file(self,  fo):
-        parser = RWAddressParser()
+        parser = RWAddressParser(self.config[PATHS]['db_path'], self.config[FILES]['db_name'])
         lines = fo.readlines()
         data = []
         for line in lines:
@@ -95,30 +95,44 @@ class HermesUKPlugin(ConvertInterface):
             if len(blocks) > 3: name = blocks[3]
             if len(blocks) > 4: street = blocks[4].strip()
             if len(blocks) > 5: phone = blocks[5].strip()
-            if len(sender) > 6: sender = blocks[6] # the company/person sending the package - added to note
+            if len(sender) > 6: sender = self.expandSender(blocks[6]) # the company/person sending the package - added to note
             if len(blocks) > 7: info = blocks[7]
             if len(blocks) > 8: route = blocks[8][3:6]
             if len(user_info) > 9: user_info = blocks[9]
 
+            postcodevalid, postcode = RWAddressParser.validatePostcode(postcode)
+            if not postcodevalid:
+                error = 'Error : Route={route}, Name={name}, Postcode={code} - Invalid postcode'.format(route=route, name=name, postcode = postcode)
+                self.comms.emit(error)
+                continue
+            
             address = parser.parse(street, postcode, name)
 
-            rowlist.append(address.address())     # should be number + street
-            rowlist.append(address.city) # town/city
-            rowlist.append(address.region2)       # County/State
-            rowlist.append(postcode)     # postcode
-            rowlist.append(address.country)            # Country
-            rowlist.append("1.0")              # Priority
-            rowlist.append(phone)    # Phone number
-            rowlist.append(StringUtil.chomp(notes))
-            rowlist.append(address.lat)
-            rowlist.append(address.lon)
-            data.append(rowlist)
+            notes = sender
+            notes += ' : ' + info
+
+#             rowlist = {}
+#             rowlist.append(address.address())     # should be number + street
+#             rowlist.append(address.city) # town/city
+#             rowlist.append(address.region2)       # County/State
+#             rowlist.append(postcode)     # post code
+#             rowlist.append(address.country)            # Country
+#             rowlist.append("1.0")              # Priority
+#             rowlist.append(phone)    # Phone number
+#             rowlist.append(StringUtil.chomp(notes))
+#             rowlist.append(address.lat)
+#             rowlist.append(address.lon)
+#             data.append(rowlist)
         self.m_rwdata[route] = data
 
-    def handleDuffAddresses(self, street, streetdata, notes):
-#         dlg = StreetDialog(street, streetdata, notes)
-#         dlg.show()
-        pass
+    def expandSender(self, sender):
+        if sender == 'AMAZ':
+            return 'Amazon'
+        elif sender == 'NEXT':
+            return 'Next'
+        else:
+            return sender
+
 
     def getAddress(self, query):
         search_payload = {'key':'AIzaSyCAZVZOLgF4htpnLsAGkCZi7ygAsI7aFts', 'query':query}
