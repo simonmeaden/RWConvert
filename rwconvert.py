@@ -41,6 +41,7 @@ import yaml
 from yaml import YAMLObject
 from datetime import date, datetime
 # import const
+# from db import Database, Address, Housename 
 
 
 # constant values
@@ -76,10 +77,14 @@ class ConverterWidget(QMainWindow):
         '''
 
         super().__init__()
+<<<<<<< HEAD
         
         self.comms = CommSignals()
 
 
+=======
+                      
+>>>>>>> refs/remotes/origin/master
         """
         Read configuration file and return its contents
         """
@@ -128,8 +133,12 @@ class ConverterWidget(QMainWindow):
         self.config[PATHS]['download_path']  = os.path.join(self.config[PATHS]['homepath'], 'Downloads')
         self.config[PATHS]['save_path']      = os.path.join(self.config[PATHS]['docpath'], self.name)
         self.config[PATHS]['config_path']    = appdirs.user_config_dir(self.name)
+<<<<<<< HEAD
         self.config[PATHS]['db_path']        = os.path.join(self.config[PATHS]['config_path'], 'data')
 
+=======
+        self.config[PATHS]['db_path'] = os.path.join(self.config[PATHS]['config_path'], 'data')
+>>>>>>> refs/remotes/origin/master
         self.config[FILES]['config_name']    = 'config.yaml'
         self.config[FILES]['db_name']        = 'rwconvert.sqlite'
         self.config[FILES]['save_file']      = 'roadwarrior'

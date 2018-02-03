@@ -1,0 +1,1 @@
+INSERT INTO street (name, city_id) VALUES ({name}, {city_id});

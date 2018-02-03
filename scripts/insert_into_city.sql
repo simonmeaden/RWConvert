@@ -1,0 +1,1 @@
+INSERT INTO city (name, region_id) VALUES ({name}, {region_id});

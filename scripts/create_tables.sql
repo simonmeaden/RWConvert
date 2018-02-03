@@ -8,7 +8,9 @@ CREATE TABLE IF NOT EXISTS "housename" (
 CREATE TABLE IF NOT EXISTS "postcode" (
 	"id" INTEGER PRIMARY KEY AUTOINCREMENT,
     "street_id" INTEGER,
-    "code" VARCHAR(20)
+    "code" VARCHAR(20),
+    "def_longitude" INTEGER,
+    "def_latitude" INTEGER
 );
 CREATE TABLE IF NOT EXISTS "region" (
     "id" INTEGER PRIMARY KEY AUTOINCREMENT,

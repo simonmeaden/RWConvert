@@ -14,6 +14,8 @@ from PyQt5.Qt import (
     )
 from convert_iplugin import ConvertInterface, AddressType, GAddress
 from stringutil import StringUtil
+from string import punctuation
+
 import requests
 from db.database import Database
 # from RWConvertUtils.RWConvertUtils import RWConvertUtils
@@ -38,6 +40,10 @@ class StreetDialog(QDialog):
         self.initGui()
         self.lat = 0.0
         self.lon = 0.0
+<<<<<<< HEAD
+=======
+        self.db = Database(self.config)
+>>>>>>> refs/remotes/origin/master
 
     def initGui(self):
         l = QGridLayout()
@@ -66,28 +72,83 @@ class HermesUKPlugin(ConvertInterface):
     details_url = 'https://maps.googleapis.com/maps/api/place/details/json'
     geocode_url = 'http://maps.googleapis.com/maps/api/geocode/json?'
     county_search_url = 'https://maps.googleapis.com/maps/api/geocode/json' #?address=Winnetka&key=YOUR_API_KEY
+<<<<<<< HEAD
     config = {}
 
 
     def __init__(self, config, comms):
+=======
+
+    def __init__(self):
+>>>>>>> refs/remotes/origin/master
         '''
         Constructor
         '''
+<<<<<<< HEAD
         super().__init__(config, comms)
+=======
+>>>>>>> refs/remotes/origin/master
         self.pluginname = 'Hermes (UK) manifest CSV Converter'
         self.plugindescription = ('Converts Hermes (UK) CSV manifest files into '
                                   ' a format that Road Warrior online Upload facility understands,'
                                   ' basically an Excel xlsx file.')
         self.filetypes = 'Manifest CSV Files (manifest*.csv)'
 
+<<<<<<< HEAD
 #         db = Database(self.config[PATHS]['db_path'], self.config[FILES]['db_name'])
 
+=======
+>>>>>>> refs/remotes/origin/master
     def parse_file(self,  fo):
         parser = RWAddressParser(self.config[PATHS]['db_path'], self.config[FILES]['db_name'])
         lines = fo.readlines()
         data = []
         for line in lines:
             blocks = line.split(',')
+<<<<<<< HEAD
+=======
+            route = blocks[8][3:6]
+            sender = blocks[6] # the compay/person sending the package - added to note
+            info = blocks[7]
+            user_info = blocks[9]
+            name = blocks[3]
+            street = blocks[4].strip()
+            streetsplit = StringUtil.split_without(street, string.punctuation)
+            number = '0 '
+            if len(streetsplit) > 0 and streetsplit[0].isnumeric():
+                number = streetsplit[0] + ' '
+
+#             town = 'Paignton'
+            self.region = 'Devon'
+            postcode = blocks[0]
+            phone = blocks[5]
+            country = 'UK'#'GB'
+            priority = '1.0'
+            '''
+            Uninitialised hermes deliveries are defined by XXXXXXXXXXXXXXXXXXXX
+            the road warrior importer cannot handle them so you will need
+            to enter them manually..
+            '''
+            if name[0] == 'X' and name[1] == 'X' and name[2] == 'X' and name[4] == 'X':
+                '''
+                show that there were some uninitialised entries???
+                '''
+                continue
+            notes = route + ' : ' + sender + ' : ' + info+ ' : ' + user_info
+            rowlist = []
+            rowlist.append(name)     # pluginname
+
+            address_details = self.getAddress(postcode)
+            pc_streetdata = address_details.split(',')#StringUtil.split_without(address_details, ',')
+            street = number + pc_streetdata[0]
+            town = pc_streetdata[1].split()[0] # second part is the postcode again
+
+#             streetdata = StringUtil.split_without(street, string.punctuation)
+#             if len(pc_streetdata) > 0:
+#                 if not pc_streetdata[0].isnumeric():
+#                     # do something to recover house number
+#                     pass
+>>>>>>> refs/remotes/origin/master
 
             route = street = sender = info = user_info = phone = postcode = ''
             if len(blocks) > 0: postcode = blocks[0]
@@ -125,6 +186,7 @@ class HermesUKPlugin(ConvertInterface):
 #             data.append(rowlist)
         self.m_rwdata[route] = data
 
+<<<<<<< HEAD
     def expandSender(self, sender):
         if sender == 'AMAZ':
             return 'Amazon'
@@ -133,6 +195,12 @@ class HermesUKPlugin(ConvertInterface):
         else:
             return sender
 
+=======
+    def handleDuffAddresses(self, street, streetdata, notes):
+#         dlg = StreetDialog(street, streetdata, notes)
+#         dlg.show()
+        pass
+>>>>>>> refs/remotes/origin/master
 
     def getAddress(self, query):
         search_payload = {'key':'AIzaSyCAZVZOLgF4htpnLsAGkCZi7ygAsI7aFts', 'query':query}
