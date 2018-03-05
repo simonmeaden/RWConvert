@@ -29,7 +29,7 @@ class Database(object):
 #     get_streetnames_from_postcode = open('../scripts/get_streetnames_from_postcode.sql', 'r').read()
 #     get_streetname_housename_from_postcode = open('../scripts/get_streetname_housename_from_postcode.sql', 'r').read()
 
-    self.countries = {}
+#    self.countries = {}
 
     def __init__(self, db_path, db_name):
         '''
@@ -81,7 +81,7 @@ class Database(object):
                 UNIQUE(name, postcode_id)
             );
         '''
-    	self.create_countries = '''
+        self.create_countries = '''
             CREATE TABLE IF NOT EXISTS countries (
                 "common" TEXT,
                 "official" TEXT,

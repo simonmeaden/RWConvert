@@ -3,20 +3,19 @@ Created on 5 Oct 2017
 
 @author: Simon Meaden
 '''
-import abc
-import string
+#import abc
+#import string
 from PyQt5.Qt import (
     QDialog,
     QLabel,
     QLineEdit,
-    QFrame,
+    #QFrame,
     QGridLayout
     )
 from convert_iplugin import ConvertInterface, AddressType, GAddress
 from stringutil import StringUtil
 import requests
 from db.database import Database
-# from RWConvertUtils.RWConvertUtils import RWConvertUtils
 from addressparser.RWAddressParser import RWAddressParser
 import convert_iplugin
 
@@ -92,7 +91,7 @@ class HermesUKPlugin(ConvertInterface):
             route = street = sender = info = user_info = phone = postcode = ''
             if len(blocks) > 0: postcode = blocks[0]
             # 1 & 2 are internal codes defining parcel type - not used here
-            if len(blocks) > 3: name = blocks[3]
+            if len(blocks) > 3: name = StringUtil.titlecase(blocks[3])
             if len(blocks) > 4: street = blocks[4].strip()
             if len(blocks) > 5: phone = blocks[5].strip()
             if len(sender) > 6: sender = self.expandSender(blocks[6]) # the company/person sending the package - added to note
@@ -102,27 +101,29 @@ class HermesUKPlugin(ConvertInterface):
 
             postcodevalid, postcode = RWAddressParser.validatePostcode(postcode)
             if not postcodevalid:
-                error = 'Error : Route={route}, Name={name}, Postcode={code} - Invalid postcode'.format(route=route, name=name, postcode = postcode)
-                self.comms.emit(error)
+                # TODO some form of error checking and reporting
                 continue
+                #error = 'Error : Route={route}, Name={name}, Postcode={postcode} - Invalid postcode'.format(route=route, name=name, postcode = postcode)
+               # self.comms.emit(error)
+                #continue
             
             address = parser.parse(street, postcode, name)
+            if address:
+                notes = sender
+                notes += ' : ' + info
 
-            notes = sender
-            notes += ' : ' + info
-
-#             rowlist = {}
-#             rowlist.append(address.address())     # should be number + street
-#             rowlist.append(address.city) # town/city
-#             rowlist.append(address.region2)       # County/State
-#             rowlist.append(postcode)     # post code
-#             rowlist.append(address.country)            # Country
-#             rowlist.append("1.0")              # Priority
-#             rowlist.append(phone)    # Phone number
-#             rowlist.append(StringUtil.chomp(notes))
-#             rowlist.append(address.lat)
-#             rowlist.append(address.lon)
-#             data.append(rowlist)
+                rowlist = []
+                rowlist.append(address.address())     # should be number + street
+                rowlist.append(address.city) # town/city
+                rowlist.append(address.region2)       # County/State
+                rowlist.append(postcode)     # post code
+                rowlist.append(address.country)            # Country
+                rowlist.append("1.0")              # Priority
+                rowlist.append(phone)    # Phone number
+                rowlist.append(StringUtil.chomp(notes))
+                rowlist.append(address.lat)
+                rowlist.append(address.lon)
+                data.append(rowlist)
         self.m_rwdata[route] = data
 
     def expandSender(self, sender):

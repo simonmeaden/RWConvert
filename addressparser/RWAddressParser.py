@@ -1,31 +1,29 @@
-'''
+# -*- coding: utf-8 -*-
+"""
 Created on 28 Dec 2017
 
 @author: Simon Meaden
-'''
+"""
 
 # from address import AddressParser, Address
 from postal.expand import expand_address
 from postal.parser import parse_address
 import requests
-import collections
-import string
 from string import whitespace
-from enum import Enum
 from db.database import Database
 from convert_iplugin import AddressType, GAddress
 from stringutil import StringUtil
 import re
-import pytest
 
 class RWAddressParser(object):
-    '''
+    
+    """
     Parses the supplied address using various sources and libraries
     pypostal libpostal) is used to parse the address. Google Maps is
     used to get certain data from the postcode. The supplied address is
     also parsed and expanded to supply house names or numbers and
     full street types ('rd' to 'road' etc.).
-    '''
+    """
     search_url = 'https://maps.googleapis.com/maps/api/place/textsearch/json'
     details_url = 'https://maps.googleapis.com/maps/api/place/details/json'
     geocode_url = 'http://maps.googleapis.com/maps/api/geocode/json?'
@@ -42,7 +40,7 @@ class RWAddressParser(object):
 
     def parse(self, street, postcode, customer = ''):
 
-        '''Initially try to download default latlon from db '''
+        '''Initially try to download default lat/lon from db '''
 #         def_latlon = self.db.getDefaultLatLonFromDB(postcode)
 
         ''' Download data from Google, expand name forms 'Rd' to 'road' etc.
@@ -74,17 +72,18 @@ class RWAddressParser(object):
         for name, add_type in address_data:
             if add_type == 'house_number':
                 g_address.type = AddressType.HOUSE_NUMBER
-                g_address.housenumber = name
+                g_address.house_number = name
             elif add_type == 'house_name':
                 g_address.type = AddressType.HOUSE_NAME
-                g_address.housename = name
+                g_address.house_name = StringUtil.titlecase(name)
             elif add_type == 'road':
-                g_address.street = name
+                g_address.street = StringUtil.titlecase(name)
             elif add_type == 'city':
-                g_address.city = name
+                g_address.city = StringUtil.titlecase(name)
             elif add_type == 'country':
-                g_address.country = 'United Kingdom'
+                g_address.country = StringUtil.titlecase(country)
 
+        g_address.postcode = postcode
 
         ''' OK a weird user cock-up that occasionally comes up. The user enters their house number
         into the name slot. Just check for a numeric name. May need to expand this later
@@ -147,28 +146,30 @@ class RWAddressParser(object):
         search_req = requests.get(self.search_url, params=search_payload)
         search_json = search_req.json()
 
-        address.form_add = search_json['results'][0]['formatted_address']
-        address.place_id = search_json['results'][0]['place_id']
-        address.lat = search_json['results'][0]['geometry']['location']['lat']
-        address.lon = search_json['results'][0]['geometry']['location']['lng']
-
-        details_payload = {"key":'AIzaSyCAZVZOLgF4htpnLsAGkCZi7ygAsI7aFts', "placeid":address.place_id}
-        details_resp = requests.get(self.details_url, params=details_payload)
-        details_json = details_resp.json()
-
-        for item in details_json['result']['address_components']:
-            if item['types'][0] == 'postal_code':
-                continue
-            elif item['types'][0] == 'route':
-                address.street = item['long_name']
-            elif item['types'][0] == 'postal_town':
-                address.city = item['long_name']
-            elif item['types'][0] == 'country':
-                address.country = item['long_name']
-            elif item['types'][0] == 'administrative_area_level_1':
-                address.region1 = item['long_name']
-            elif item['types'][0] == 'administrative_area_level_2':
-                address.region2 = item['long_name']
+        if len( search_json['results']) > 0:
+            address.form_add = search_json['results'][0]['formatted_address']
+            address.place_id = search_json['results'][0]['place_id']
+            address.lat = search_json['results'][0]['geometry']['location']['lat']
+            address.lon = search_json['results'][0]['geometry']['location']['lng']
+    
+            details_payload = {"key":'AIzaSyCAZVZOLgF4htpnLsAGkCZi7ygAsI7aFts', "placeid":address.place_id}
+            details_resp = requests.get(self.details_url, params=details_payload)
+            details_json = details_resp.json()
+    
+            if len(details_json['result']['address_components']) > 0:
+                for item in details_json['result']['address_components']:
+                    if item['types'][0] == 'postal_code':
+                        continue
+                    elif item['types'][0] == 'route':
+                        address.street = item['long_name']
+                    elif item['types'][0] == 'postal_town':
+                        address.city = item['long_name']
+                    elif item['types'][0] == 'country':
+                        address.country = item['long_name']
+                    elif item['types'][0] == 'administrative_area_level_1':
+                        address.region1 = item['long_name']
+                    elif item['types'][0] == 'administrative_area_level_2':
+                        address.region2 = item['long_name']
 
         return address
 
