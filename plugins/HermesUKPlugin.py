@@ -16,7 +16,7 @@ from convert_iplugin import ConvertInterface, AddressType, GAddress
 from stringutil import StringUtil
 import requests
 from db.database import Database
-from addressparser.RWAddressParser import RWAddressParser
+from addressparser.addressparser import parser
 import convert_iplugin
 
 # constant values
@@ -82,7 +82,7 @@ class HermesUKPlugin(ConvertInterface):
 #         db = Database(self.config[PATHS]['db_path'], self.config[FILES]['db_name'])
 
     def parse_file(self,  fo):
-        parser = RWAddressParser(self.config[PATHS]['db_path'], self.config[FILES]['db_name'])
+        parser = parser(self.config[PATHS]['db_path'], self.config[FILES]['db_name'])
         lines = fo.readlines()
         data = []
         for line in lines:
